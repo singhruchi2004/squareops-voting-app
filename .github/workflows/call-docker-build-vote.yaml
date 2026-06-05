@@ -1,82 +1,92 @@
-name: Build Vote
-# template source: https://github.com/dockersamples/.github/blob/main/templates/call-docker-build.yaml
+name: Build and Push Vote Service
 
 on:
-  # we want pull requests so we can build(test) but not push to image registry
   push:
     branches:
-      - 'main'
-    # only build when important files change
+      - main
     paths:
       - 'vote/**'
       - '.github/workflows/call-docker-build-vote.yaml'
   pull_request:
     branches:
-      - 'main'
-    # only build when important files change
+      - main
     paths:
       - 'vote/**'
       - '.github/workflows/call-docker-build-vote.yaml'
 
 jobs:
-  call-docker-build:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-    name: Vote Call Docker Build
+      - name: Lint Python (flake8)
+        run: |
+          pip install flake8
+          flake8 vote/ --max-line-length=120 --ignore=E501 || true
 
-    uses: dockersamples/.github/.github/workflows/reusable-docker-build.yaml@main
+      - name: Lint Kubernetes Manifests
+        run: |
+          curl -sLO https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
+          tar xf kubeconform-linux-amd64.tar.gz
+          ./kubeconform k8s-specifications/ || true
 
-    permissions:
-      contents: read
-      packages: write # needed to push docker image to ghcr.io
-      pull-requests: write # needed to create and update comments in PRs
-    
-    secrets:
+  build-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
 
-      # Only needed if with:dockerhub-enable is true below
-      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Only needed if with:dockerhub-enable is true below
-      dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    with:
-      
-      ### REQUIRED
-      ### ENABLE ONE OR BOTH REGISTRIES
-      ### tell docker where to push.
-      ### NOTE if Docker Hub is set to true, you must set secrets above and also add account/repo/tags below
-      dockerhub-enable: true
-      ghcr-enable: true
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: vote
+          push: ${{ github.event_name == 'push' }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            singhruchi2004/squareops-vote:latest
+            singhruchi2004/squareops-vote:${{ github.sha }}
+            ghcr.io/singhruchi2004/squareops-voting-app-vote:latest
+            ghcr.io/singhruchi2004/squareops-voting-app-vote:${{ github.sha }}
 
-      ### REQUIRED 
-      ### A list of the account/repo names for docker build. List should match what's enabled above
-      ### defaults to:
-      image-names: |
-      ghcr.io/singhruchi2004/example-voting-app-vote
-      ruchi14/examplevotingapp_vote
-      
-      ### REQUIRED set rules for tagging images, based on special action syntax:
-      ### https://github.com/docker/metadata-action#tags-input
-      ### defaults to:
-      tag-rules: |
-        type=raw,value=latest,enable=${{ endsWith(github.ref, github.event.repository.default_branch) }}
-        type=raw,value=before,enable=${{ endsWith(github.ref, github.event.repository.default_branch) }}
-        type=raw,value=after,enable=${{ endsWith(github.ref, github.event.repository.default_branch) }}
-        type=ref,event=pr
-      
-      ### path to where docker should copy files into image
-      ### defaults to root of repository (.)
-      context: vote
-      
-      ### Dockerfile alternate name. Default is Dockerfile (relative to context path)
-      # file: Containerfile
+  smoke-test:
+    name: Smoke Test on kind
+    runs-on: ubuntu-latest
+    needs: build-push
+    steps:
+      - uses: actions/checkout@v4
 
-      ### build stage to target, defaults to empty, which builds to last stage in Dockerfile
-      # target:
-      
-      ### platforms to build for, defaults to linux/amd64
-      ### other options: linux/amd64,linux/arm64,linux/arm/v7
-      platforms: linux/amd64,linux/arm64,linux/arm/v7
-      
-      ### Create a PR comment with image tags and labels
-      ### defaults to false
-      # comment-enable: false
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.8.0
+
+      - name: Deploy vote app
+        run: |
+          kubectl apply -f k8s-specifications/
+
+      - name: Wait for vote pod
+        run: |
+          kubectl wait --for=condition=ready pod \
+            -l app=vote \
+            --timeout=120s
+
+      - name: Smoke Test - Vote endpoint 200 OK
+        run: |
+          kubectl port-forward svc/vote 5000:80 &
+          sleep 5
+          curl --fail http://localhost:5000 || exit 1
+          echo "✅ Vote endpoint is UP!"
