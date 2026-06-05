@@ -62,7 +62,7 @@ jobs:
         with:
           context: vote
           push: ${{ github.event_name == 'push' }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           tags: |
             ruchi14/squareops-vote:latest
             ruchi14/squareops-vote:${{ github.sha }}
