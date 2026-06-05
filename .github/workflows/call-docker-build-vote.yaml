@@ -59,8 +59,8 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           platforms: linux/amd64,linux/arm64
           tags: |
-            singhruchi2004/squareops-vote:latest
-            singhruchi2004/squareops-vote:${{ github.sha }}
+            ruchi14/squareops-vote:latest
+            ruchi14/squareops-vote:${{ github.sha }}
             ghcr.io/singhruchi2004/squareops-voting-app-vote:latest
             ghcr.io/singhruchi2004/squareops-voting-app-vote:${{ github.sha }}
 
