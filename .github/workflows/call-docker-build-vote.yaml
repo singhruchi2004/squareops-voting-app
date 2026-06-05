@@ -36,6 +36,11 @@ jobs:
     name: Build and Push Image
     runs-on: ubuntu-latest
     needs: lint
+
+    permission:
+      content: read
+      packages: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -61,8 +66,8 @@ jobs:
           tags: |
             ruchi14/squareops-vote:latest
             ruchi14/squareops-vote:${{ github.sha }}
-            ghcr.io/singhruchi2004/squareops-voting-app-vote:latest
-            ghcr.io/singhruchi2004/squareops-voting-app-vote:${{ github.sha }}
+           # ghcr.io/singhruchi2004/squareops-voting-app-vote:latest
+           # ghcr.io/singhruchi2004/squareops-voting-app-vote:${{ github.sha }}
 
   smoke-test:
     name: Smoke Test on kind
