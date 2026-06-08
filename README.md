@@ -1,65 +1,137 @@
-# Example Voting App
+# SquareOps Assignment Submission
 
-A simple distributed application running across multiple Docker containers.
+## Architecture Diagram
 
-## Getting started
+The application consists of 5 components:
 
-Download [Docker Desktop](https://www.docker.com/products/docker-desktop) for Mac or Windows. [Docker Compose](https://docs.docker.com/compose) will be automatically installed. On Linux, make sure you have the latest version of [Compose](https://docs.docker.com/compose/install/).
+- Vote Service (Python Flask)
+- Redis Queue
+- Worker Service (.NET)
+- PostgreSQL Database
+- Result Service (Node.js)
 
-This solution uses Python, Node.js, .NET, with Redis for messaging and Postgres for storage.
+Vote service sends votes to Redis. The worker reads votes from Redis and stores them in PostgreSQL. The result service reads data from PostgreSQL and displays the live voting results.
 
-Run in this directory to build and run the app:
+(Add architecture.excalidraw.png image here)
 
-```shell
-docker compose up
+---
+
+## Changes Made
+
+Compared to the original Kubernetes manifests, I made the following improvements:
+
+- Added Liveness and Readiness Probes for application health monitoring.
+- Added CPU and Memory Requests/Limits for all workloads.
+- Moved PostgreSQL credentials to Kubernetes Secret.
+- Converted PostgreSQL Deployment to StatefulSet.
+- Added PersistentVolumeClaim for database persistence.
+- Configured NGINX Ingress for Vote and Result applications.
+- Changed Vote and Result services from NodePort to ClusterIP.
+- Added GitHub Actions CI/CD pipeline for the Vote service.
+- Configured Docker Hub image publishing.
+
+---
+
+## Local Deployment Steps
+
+1. Enable Kubernetes in Docker Desktop.
+2. Clone the repository.
+
+```bash
+git clone <https://github.com/singhruchi2004/squareops-voting-app.git>
+cd squareops-voting-app
 ```
 
-The `vote` app will be running at [http://localhost:8080](http://localhost:8080), and the `results` will be at [http://localhost:8081](http://localhost:8081).
+3. Deploy the application.
 
-Alternately, if you want to run it on a [Docker Swarm](https://docs.docker.com/engine/swarm/), first make sure you have a swarm. If you don't, run:
-
-```shell
-docker swarm init
+```bash
+kubectl apply -f k8s-specifications/
 ```
 
-Once you have your swarm, in this directory run:
+4. Verify all pods are running.
 
-```shell
-docker stack deploy --compose-file docker-stack.yml vote
+```bash
+kubectl get pods
 ```
 
-## Run the app in Kubernetes
+5. Access the applications.
 
-The folder k8s-specifications contains the YAML specifications of the Voting App's services.
-
-Run the following command to create the deployments and services. Note it will create these resources in your current namespace (`default` if you haven't changed it.)
-
-```shell
-kubectl create -f k8s-specifications/
+```bash
+kubectl port-forward svc/vote 8080:8080
+kubectl port-forward svc/result 8081:8081
 ```
 
-The `vote` web app is then available on port 31000 on each host of the cluster, the `result` web app is available on port 31001.
+Open:
 
-To remove them, run:
+- http://localhost:8080
+- http://localhost:8081
 
-```shell
-kubectl delete -f k8s-specifications/
+---
+
+## CI/CD Pipeline
+
+I implemented a GitHub Actions pipeline for the Vote service.
+
+Pipeline steps:
+
+1. Trigger on changes inside the vote directory.
+2. Build Docker image.
+3. Push image to Docker Hub.
+4. Fail the workflow if any step fails.
+
+The CI/CD pipeline was implemented for the Vote service as required in the assignment.
+Docker images are published to Docker Hub.
+
+Docker Hub Repository:
+
+worker service: https://hub.docker.com/repository/docker/ruchi14/examplevotingapp_worker/general
+Vote Service:  https://hub.docker.com/repository/docker/ruchi14/examplevotingapp_vote/general
+
+
+---
+
+## Troubleshooting
+
+### Pods are not starting
+
+Check pod status:
+
+```bash
+kubectl get pods
+kubectl describe pod <pod-name>
+kubectl logs <pod-name>
 ```
 
-## Architecture
+### Vote is not visible in Result application
 
-![Architecture diagram](architecture.excalidraw.png)
+Check worker and database logs:
 
-* A front-end web app in [Python](/vote) which lets you vote between two options
-* A [Redis](https://hub.docker.com/_/redis/) which collects new votes
-* A [.NET](/worker/) worker which consumes votes and stores them in…
-* A [Postgres](https://hub.docker.com/_/postgres/) database backed by a Docker volume
-* A [Node.js](/result) web app which shows the results of the voting in real time
+```bash
+kubectl logs deployment/worker
+kubectl logs db-0
+```
 
-## Notes
+### Ingress is not working
 
-The voting application only accepts one vote per client browser. It does not register additional votes if a vote has already been submitted from a client.
+Check ingress and services:
 
-This isn't an example of a properly architected perfectly designed distributed app... it's just a simple
-example of the various types of pieces and languages you might see (queues, persistent data, etc), and how to
-deal with them in Docker at a basic level.
+```bash
+kubectl get ingress
+kubectl get svc
+```
+
+---
+
+## Trade-offs
+
+- I used Docker Desktop Kubernetes for local deployment.
+- I used Kubernetes manifests instead of Helm charts.
+- I focused on the required CI/CD pipeline for the Vote service.
+- I kept the setup simple and easy to reproduce.
+
+
+## Video Walkthrough
+
+Video Link:
+
+(Add Loom or YouTube link here)
