@@ -83,9 +83,9 @@ The CI/CD pipeline was implemented for the Vote service as required in the assig
 Docker images are published to Docker Hub.
 
 Docker Hub Repository:
-
-worker service: https://hub.docker.com/repository/docker/ruchi14/examplevotingapp_worker/general
-Vote Service:  https://hub.docker.com/repository/docker/ruchi14/examplevotingapp_vote/general
+#service
+ worker service: https://hub.docker.com/repository/docker/ruchi14/examplevotingapp_worker/general
+ Vote Service:  https://hub.docker.com/repository/docker/ruchi14/examplevotingapp_vote/general
 
 
 ---
@@ -97,9 +97,23 @@ Vote Service:  https://hub.docker.com/repository/docker/ruchi14/examplevotingapp
 Check pod status:
 
 ```bash
+
 kubectl get pods
-kubectl describe pod <pod-name>
-kubectl logs <pod-name>
+
+kubectl describe pod db-0
+kubectl describe pod redis-79fd68dfd-bgnwh
+kubectl describe pod result-77cc88b898-4gzjw
+kubectl describe pod vote-56d74bcc4b-phh4k
+kubectl describe pod worker-7bcf5dd6fd-srrwp
+
+
+kubectl logs db-0
+kubectl logs redis-79fd68dfd-bgnwh
+kubectl logs result-77cc88b898-4gzjw
+kubectl logs vote-56d74bcc4b-phh4k
+kubectl logs worker-7bcf5dd6fd-srrwp
+
+demo check -> kubectl logs -f worker-7bcf5dd6fd-srrwp
 ```
 
 ### Vote is not visible in Result application
