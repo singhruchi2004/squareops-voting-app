@@ -146,6 +146,6 @@ kubectl get svc
 
 ## Video Walkthrough
 
-Video Link:
+Video Link: https://youtu.be/ikgUeVreknY?si=Im9Yk6Rb4qbNjm7o
 
-(Add Loom or YouTube link here)
+(YouTube link here)
