@@ -12,7 +12,7 @@ The application consists of 5 components:
 
 Vote service sends votes to Redis. The worker reads votes from Redis and stores them in PostgreSQL. The result service reads data from PostgreSQL and displays the live voting results.
 
-(![alt text](1000274773.jpg))
+(![alt text](architecture.jpg))
 
 ---
 
